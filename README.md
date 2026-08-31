@@ -1,181 +1,105 @@
 # Customer Churn Prediction with Explainability
 
-A machine learning app that predicts customer churn risk and explains *why*
-using SHAP, deployed as an interactive Streamlit dashboard.
+A machine learning app that predicts whether a customer is likely to churn, and explains why using SHAP. Built as part of my data science portfolio, deployed with Streamlit.
 
-**Live demo:** _(add your Streamlit Cloud link here once deployed)_
+**Live demo:** [PASTE YOUR STREAMLIT CLOUD URL HERE]
 
 ---
 
-## Project Structure
+## Results
+
+I trained this on the IBM Telco Customer Churn dataset — about 7,000 customers, roughly 27% churn rate.
+
+| Metric | Logistic Regression | Random Forest |
+|---|---|---|
+| Precision | 0.505 | 0.529 |
+| Recall | 0.781 | 0.778 |
+| F1 Score | 0.613 | 0.630 |
+| ROC-AUC | 0.841 | 0.841 |
+
+Random Forest ended up being the better model — similar ROC-AUC to Logistic Regression but a better F1 and precision, so it went with that.
+
+According to SHAP, the biggest factors driving churn were **[fill in from shap_summary.png, e.g. contract type, tenure, and monthly charges]**.
+
+---
+
+## Project structure
 
 ```
 churn_project/
 ├── data/
-│   └── telco_churn.csv        <- you'll download this (step 1)
-├── models/                    <- trained model + SHAP plots get saved here
+│   └── telco_churn.csv
+├── models/
 ├── app/
-│   └── app.py                 <- Streamlit dashboard
-├── train_model.py             <- trains and saves the model
-├── shap_analysis.py           <- generates SHAP explanation plots
+│   └── app.py
+├── train_model.py
+├── shap_analysis.py
 ├── requirements.txt
 └── README.md
 ```
 
 ---
 
-## Step 1 — Get the dataset
+## How to run this yourself
 
-1. Go to Kaggle: search **"Telco Customer Churn"** (IBM sample dataset, ~7,000 rows).
-   Direct link: https://www.kaggle.com/datasets/blastchar/telco-customer-churn
-2. Download `WA_Fn-UseC_-Telco-Customer-Churn.csv`
-3. Rename it to `telco_churn.csv` and place it in `data/telco_churn.csv`
+**1. Get the dataset**
 
-(You'll need a free Kaggle account to download.)
+Download the Telco Customer Churn dataset from Kaggle: https://www.kaggle.com/datasets/blastchar/telco-customer-churn
+Rename the file to `telco_churn.csv` and drop it in `data/`.
 
----
-
-## Step 2 — Set up your environment
+**2. Set up the environment**
 
 ```bash
 cd churn_project
 python -m venv venv
-source venv/bin/activate        # on Windows: venv\Scripts\activate
+source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
----
-
-## Step 3 — Train the model
+**3. Train the model**
 
 ```bash
 python train_model.py
 ```
 
-This will:
-- Clean the data (fix missing `TotalCharges`, encode categoricals)
-- Train Logistic Regression (baseline) and Random Forest (with a small grid of settings)
-- Print precision, recall, F1, and ROC-AUC for each — **don't just look at accuracy**,
-  churn datasets are imbalanced (~27% churn rate), so a model that always predicts
-  "no churn" would look "accurate" while being useless
-- Save the best model to `models/churn_model.pkl`
+Trains Logistic Regression as a baseline, then Random Forest with a few different settings, and keeps whichever scores better on F1. Accuracy isn't the metric to trust here since the dataset is imbalanced — a model that just predicts "no churn" every time would still look ~73% accurate while being useless.
 
-Expect Random Forest to win, typically landing around F1 ≈ 0.55–0.62 and
-ROC-AUC ≈ 0.82–0.85 on this dataset — solid numbers to quote in your resume/README.
-
----
-
-## Step 4 — Generate SHAP explanations
+**4. Generate the SHAP plots**
 
 ```bash
 python shap_analysis.py
 ```
 
-This creates two images in `models/`:
-- **`shap_summary.png`** — which features matter most *overall* (usually: contract
-  type, tenure, and monthly charges dominate)
-- **`shap_waterfall_0.png`** — a specific customer's prediction broken down feature
-  by feature
+Outputs a global feature importance plot and a per-customer waterfall plot into `models/`.
 
-Use these two images in your README/LinkedIn post — they're the most convincing
-part of the project because they show you understand *interpretability*, not just
-"I called `.fit()`".
-
----
-
-## Step 5 — Run the Streamlit app locally
+**5. Run the app**
 
 ```bash
 streamlit run app/app.py
 ```
 
-This opens a browser window where you can:
-- Fill in a customer's details via form inputs
-- Get a churn probability + prediction
-- See a live SHAP waterfall plot explaining that specific prediction
+(If Windows complains that `streamlit` isn't recognized, use `python -m streamlit run app/app.py` instead.)
 
-Test it with a few different inputs — try a month-to-month, high-monthly-charge,
-low-tenure customer (should show high risk) vs. a two-year contract, low-charge,
-long-tenure customer (should show low risk). If the direction of these makes
-sense, your model is behaving sanely.
+Fill in a customer's details and it'll show you the churn probability along with a SHAP breakdown of what drove that specific prediction.
 
 ---
 
-## Step 6 — Push to GitHub
+## Notes on things that tripped me up
 
-```bash
-git init
-git add .
-git commit -m "Customer churn prediction with SHAP explainability"
-```
-
-Create a `.gitignore` so you don't commit the venv or raw data:
-
-```
-venv/
-__pycache__/
-data/telco_churn.csv
-```
-
-Then create a repo on GitHub and push:
-
-```bash
-git remote add origin https://github.com/<your-username>/churn-prediction-shap.git
-git branch -M main
-git push -u origin main
-```
-
-> Note: since you're excluding the raw CSV, mention in your README where to
-> download the dataset (link above) so anyone cloning the repo can reproduce it.
-> Alternatively, commit the CSV if it's small enough and licensing allows it.
+- SHAP's API changed between versions — newer versions return a 3D numpy array for the tree explainer instead of a list, which broke the original waterfall plot code. Handled that with a version check in `shap_analysis.py` and `app.py`.
+- On Windows, `streamlit run` sometimes isn't recognized directly depending on how it got installed — `python -m streamlit run` sidesteps that.
+- `TotalCharges` in the raw dataset has some blank strings instead of actual missing values, so a plain `pd.to_numeric()` will throw unless you pass `errors="coerce"` first.
 
 ---
 
-## Step 7 — Deploy on Streamlit Community Cloud (free)
+## Tech stack
 
-1. Go to https://share.streamlit.io and sign in with GitHub
-2. Click **"New app"**
-3. Select your repo, branch `main`, and set the main file path to `app/app.py`
-4. Click **Deploy**
-
-**Important:** Streamlit Cloud needs the trained model file (`models/churn_model.pkl`
-and `models/feature_columns.json`) to exist in the repo, since it can't run
-`train_model.py` for you. So:
-- Either commit the `models/` folder (the `.pkl` files are usually small, a few MB)
-- Or add a step in `app.py` that trains the model on first run if the file is
-  missing (more advanced — commit the model for now, simplest path)
-
-Once deployed, you'll get a public URL like:
-`https://your-app-name.streamlit.app`
-
-Add this link to your resume, GitHub README, and LinkedIn.
+Python, Pandas, Scikit-learn, SHAP, Streamlit, Matplotlib
 
 ---
 
-## Step 8 — Polish for your resume/portfolio
+## What I'd improve with more time
 
-Update your resume project line from *"In Progress"* to include:
-- The live demo link
-- Your actual F1/ROC-AUC numbers (from Step 3's output)
-- One sentence on the SHAP insight, e.g. *"Model identifies month-to-month
-  contracts and low tenure as the strongest churn predictors, validated via SHAP."*
-
-Example resume bullet:
-
-> Built and deployed an explainable churn prediction model (Random Forest,
-> ROC-AUC 0.84) with SHAP-based interpretability; created an interactive
-> Streamlit dashboard allowing per-customer risk exploration — [live demo link]
-
----
-
-## Troubleshooting
-
-- **`FileNotFoundError` for the CSV**: make sure it's at `data/telco_churn.csv`
-  exactly, and you're running commands from the `churn_project/` root folder.
-- **SHAP waterfall plot errors**: SHAP's API has changed across versions;
-  if `shap.plots._waterfall.waterfall_legacy` errors, try
-  `shap.plots.waterfall(shap.Explanation(...))` instead — check your installed
-  SHAP version with `pip show shap`.
-- **Streamlit Cloud deployment fails**: check the app logs on the Streamlit
-  Cloud dashboard — usually a missing package in `requirements.txt` or a
-  missing model file.
+- Proper cross-validation instead of tuning against the test set directly
+- Try XGBoost alongside Random Forest for comparison
+- Expose more input fields in the app (currently a few features are hardcoded for simplicity)
