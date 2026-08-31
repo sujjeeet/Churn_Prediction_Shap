@@ -2,7 +2,7 @@
 
 A machine learning app that predicts whether a customer is likely to churn, and explains why using SHAP. Built as part of my data science portfolio, deployed with Streamlit.
 
-**Live demo:** http://localhost:8501/
+**Live demo:** https://churnpredictionshap-vr8c4bytdu5dfegsmzxlch.streamlit.app/
 
 ---
 
